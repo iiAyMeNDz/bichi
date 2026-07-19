@@ -217,7 +217,7 @@
   .img-upload-area { width:80px; height:80px; border:2px dashed var(--border-light); border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-bottom:10px; font-size:28px; color:var(--text-muted); overflow:hidden; position:relative; }
   .img-upload-area img { width:100%; height:100%; object-fit:cover; position:absolute; inset:0; }
 
-  /* Barcode Scanner - Enhanced */
+  /* Barcode Scanner - Enhanced with better controls */
   #scannerContainer { 
     width:100%; 
     height:280px; 
@@ -288,6 +288,11 @@
     color:var(--red); 
     border-color:var(--red);
     background:rgba(242,85,90,0.1);
+  }
+  .scanner-result-box.scanning {
+    color:var(--blue);
+    border-color:var(--blue);
+    background:rgba(91,156,245,0.1);
   }
   .scanner-hint { 
     text-align:center; 
@@ -511,7 +516,7 @@
   <div class="modal"><div class="modal-header"><h2 id="gmTitle"></h2><button class="modal-close" onclick="closeModal('genericModal')"><i class="fas fa-times"></i></button></div><div id="gmBody"></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('genericModal')">إلغاء</button><button class="btn btn-primary" id="gmSaveBtn">حفظ</button></div></div>
 </div>
 
-<!-- Barcode Scanner Modal - Enhanced -->
+<!-- Barcode Scanner Modal - Enhanced with Anti-Duplicate -->
 <div class="modal-overlay" id="scannerModal">
   <div class="modal" style="max-width:440px;">
     <div class="modal-header"><h2><i class="fas fa-barcode"></i> مسح الباركود</h2><button class="modal-close" onclick="closeScannerModal()"><i class="fas fa-times"></i></button></div>
@@ -521,6 +526,17 @@
     </div>
     <div class="scanner-result-box" id="scannerResult">⚡ انتظر تهيئة الكاميرا...</div>
     <div class="scanner-hint">🔍 وجّه الكاميرا نحو الباركود ليتم التعرف عليه تلقائياً</div>
+    
+    <!-- إضافة زر لإيقاف المسح المؤقت -->
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <button class="btn btn-secondary" onclick="toggleScannerPause()" id="pauseScannerBtn" style="flex:1;">
+        <i class="fas fa-pause"></i> إيقاف مؤقت
+      </button>
+      <button class="btn btn-secondary" onclick="clearScanHistory()" style="flex:1;">
+        <i class="fas fa-undo"></i> إعادة تعيين
+      </button>
+    </div>
+    
     <div class="form-group" style="margin-top:14px;">
       <label>أو أدخل الباركود يدوياً</label>
       <div class="barcode-field-row">
@@ -674,55 +690,53 @@ function deleteProduct(id){ if(!confirm('حذف؟')) return; products=products.f
 async function handleImageUpload(e){ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=async function(ev){ tempProductImage=await compressImage(ev.target.result); document.getElementById('prodImagePreview').src=tempProductImage; document.getElementById('prodImagePreview').style.display='block'; }; r.readAsDataURL(f); }
 function removeProductImage(){ tempProductImage=''; document.getElementById('prodImagePreview').style.display='none'; document.getElementById('prodImageInput').value=''; }
 
-// ==================== BARCODE SCANNER - ENHANCED (BEST SOLUTION) ====================
+// ==================== BARCODE SCANNER - IMPROVED WITH ANTI-DUPLICATE ====================
 let scannerMode = 'cart';
 let scannerActive = false;
+let scannerPaused = false;
 let lastScanTime = 0;
 let lastScanCode = '';
+let scanHistory = []; // سجل آخر 20 عملية مسح
 let scannerVideoStream = null;
 let detectionLoopId = null;
+let detectionAttempts = 0;
+
+// إعدادات مكافحة التكرار
+const SCAN_COOLDOWN_MS = 3000; // 3 ثواني بين كل مسح
+const SCAN_HISTORY_LIMIT = 20;
+const SAME_CODE_TIMEOUT_MS = 5000; // 5 ثواني لنفس الكود
 
 async function openBarcodeScanner(mode){
     scannerMode = mode;
+    scannerPaused = false;
+    document.getElementById('pauseScannerBtn').innerHTML = '<i class="fas fa-pause"></i> إيقاف مؤقت';
+    
     const resultBox = document.getElementById('scannerResult');
     resultBox.innerText = '⚡ جاري تهيئة الكاميرا...';
-    resultBox.className = 'scanner-result-box';
+    resultBox.className = 'scanner-result-box scanning';
     document.getElementById('manualBarcodeInput').value = '';
     openModal('scannerModal');
 
-    // ننتظر قليلاً حتى تظهر النافذة
     await new Promise(r => setTimeout(r, 400));
-    
-    // نبدأ الماسح
     startScanner();
 }
 
 function startScanner(){
-    if(scannerActive) {
-        stopScanner();
-    }
+    if(scannerActive) stopScanner();
     
     const container = document.getElementById('scannerContainer');
-    
-    // مسح أي عناصر سابقة
     Array.from(container.querySelectorAll('video,canvas')).forEach(el => el.remove());
     
-    // إزالة أي تدفق سابق
     if (scannerVideoStream) {
         scannerVideoStream.getTracks().forEach(track => track.stop());
         scannerVideoStream = null;
     }
     
-    // التحقق من دعم BarcodeDetector
+    // محاولة استخدام BarcodeDetector أولاً
     if ('BarcodeDetector' in window) {
         startNativeScanner(container);
     } else {
-        // إذا لم يدعم المتصفح، نحاول استخدام Quagga كبديل
-        showToast('المتصفح لا يدعم الماسح التلقائي، جرب استخدام الإدخال اليدوي','error');
-        document.getElementById('scannerResult').innerText = '⚠️ الماسح التلقائي غير مدعوم، استخدم الإدخال اليدوي';
-        document.getElementById('scannerResult').className = 'scanner-result-box notfound';
-        // محاولة تحميل Quagga
-        loadQuaggaScanner(container);
+        startQuaggaScanner(container);
     }
 }
 
@@ -746,20 +760,21 @@ function startNativeScanner(container) {
         video.play();
         scannerActive = true;
         document.getElementById('scannerResult').innerText = '📷 وجه الكاميرا نحو الباركود';
-        document.getElementById('scannerResult').className = 'scanner-result-box';
+        document.getElementById('scannerResult').className = 'scanner-result-box scanning';
         
-        // إنشاء ماسح الباركود
         const barcodeDetector = new BarcodeDetector({
             formats: ['qr_code', 'ean_13', 'ean_8', 'code_128', 'upc_a', 'upc_e', 'codabar', 'code_39']
         });
 
         async function detectBarcode() {
-            if (!scannerActive || !video.srcObject) {
+            if (!scannerActive || scannerPaused || !video.srcObject) {
+                if (scannerActive) {
+                    detectionLoopId = requestAnimationFrame(detectBarcode);
+                }
                 return;
             }
             
             try {
-                // التأكد من أن الفيديو جاهز
                 if (video.readyState < 2) {
                     if (scannerActive) {
                         detectionLoopId = requestAnimationFrame(detectBarcode);
@@ -770,51 +785,61 @@ function startNativeScanner(container) {
                 const barcodes = await barcodeDetector.detect(video);
                 if (barcodes.length > 0) {
                     const code = barcodes[0].rawValue;
-                    const now = Date.now();
-                    if (code === lastScanCode && now - lastScanTime < 2000) {
-                        // منع التكرار السريع
-                        if (scannerActive) {
-                            detectionLoopId = requestAnimationFrame(detectBarcode);
+                    
+                    // التحقق من صحة الباركود (تجاهل الأرقام القصيرة جداً)
+                    if (code && code.length >= 4) {
+                        const now = Date.now();
+                        
+                        // التحقق من التكرار باستخدام عدة معايير
+                        if (!isDuplicateScan(code, now)) {
+                            lastScanTime = now;
+                            lastScanCode = code;
+                            addToScanHistory(code);
+                            playBeep(1200, 0.1);
+                            handleScannedCode(code);
+                            
+                            // تحديث واجهة المستخدم
+                            document.getElementById('scannerResult').className = 'scanner-result-box found';
+                            document.getElementById('scannerResult').innerText = '✅ تم المسح: ' + code;
                         }
-                        return;
                     }
-                    lastScanTime = now;
-                    lastScanCode = code;
-                    playBeep(1200, 0.1);
-                    handleScannedCode(code);
+                } else {
+                    // إذا لم يتم العثور على باركود لفترة، نغير الرسالة
+                    if (detectionAttempts % 30 === 0) {
+                        document.getElementById('scannerResult').className = 'scanner-result-box scanning';
+                        document.getElementById('scannerResult').innerText = '📷 جاري البحث عن باركود...';
+                    }
+                    detectionAttempts++;
                 }
             } catch (e) {
                 console.error('خطأ في المسح:', e);
             }
             
-            // الاستمرار في المسح
             if (scannerActive) {
                 detectionLoopId = requestAnimationFrame(detectBarcode);
             }
         }
         
-        // بدء حلقة المسح
         if (scannerActive) {
             detectionLoopId = requestAnimationFrame(detectBarcode);
         }
         
     }).catch(err => {
         console.error('خطأ في الكاميرا:', err);
-        showToast('تعذر الوصول للكاميرا، تأكد من منح الإذن','error');
-        document.getElementById('scannerResult').innerText = '❌ لا يمكن الوصول للكاميرا';
+        showToast('تعذر الوصول للكاميرا، جرب الإدخال اليدوي','error');
+        document.getElementById('scannerResult').innerText = '❌ لا يمكن الوصول للكاميرا، استخدم الإدخال اليدوي';
         document.getElementById('scannerResult').className = 'scanner-result-box notfound';
-        // محاولة استخدام Quagga كبديل
-        loadQuaggaScanner(container);
+        startQuaggaScanner(container);
     });
 }
 
-function loadQuaggaScanner(container) {
-    // محاولة تحميل Quagga من CDN إذا لم يكن محملاً
+function startQuaggaScanner(container) {
     if (typeof Quagga === 'undefined') {
+        // محاولة تحميل Quagga من CDN
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js';
         script.onload = function() {
-            startQuaggaScanner(container);
+            initQuagga(container);
         };
         script.onerror = function() {
             document.getElementById('scannerResult').innerText = '❌ تعذر تحميل الماسح، استخدم الإدخال اليدوي';
@@ -823,11 +848,11 @@ function loadQuaggaScanner(container) {
         };
         document.head.appendChild(script);
     } else {
-        startQuaggaScanner(container);
+        initQuagga(container);
     }
 }
 
-function startQuaggaScanner(container) {
+function initQuagga(container) {
     if (typeof Quagga === 'undefined') {
         document.getElementById('scannerResult').innerText = '❌ الماسح غير متوفر، استخدم الإدخال اليدوي';
         document.getElementById('scannerResult').className = 'scanner-result-box notfound';
@@ -864,47 +889,113 @@ function startQuaggaScanner(container) {
         }
         Quagga.start();
         scannerActive = true;
-        document.getElementById('scannerResult').innerText = '📷 وجه الكاميرا نحو الباركود (Quagga)';
-        document.getElementById('scannerResult').className = 'scanner-result-box';
+        document.getElementById('scannerResult').innerText = '📷 وجه الكاميرا نحو الباركود';
+        document.getElementById('scannerResult').className = 'scanner-result-box scanning';
     });
 
-    Quagga.offDetected(onBarcodeDetected);
-    Quagga.onDetected(onBarcodeDetected);
+    Quagga.offDetected(onQuaggaDetected);
+    Quagga.onDetected(onQuaggaDetected);
 }
 
-function onBarcodeDetected(result) {
+function onQuaggaDetected(result) {
+    if (scannerPaused) return;
+    
     const code = result && result.codeResult ? result.codeResult.code : null;
-    if (!code) return;
+    if (!code || code.length < 4) return;
+    
     const now = Date.now();
-    if (code === lastScanCode && now - lastScanTime < 2000) return;
-    lastScanTime = now;
-    lastScanCode = code;
-    playBeep(1200, 0.1);
-    handleScannedCode(code);
+    if (!isDuplicateScan(code, now)) {
+        lastScanTime = now;
+        lastScanCode = code;
+        addToScanHistory(code);
+        playBeep(1200, 0.1);
+        handleScannedCode(code);
+        document.getElementById('scannerResult').className = 'scanner-result-box found';
+        document.getElementById('scannerResult').innerText = '✅ تم المسح: ' + code;
+    }
+}
+
+// وظائف مكافحة التكرار المحسّنة
+function isDuplicateScan(code, now) {
+    // 1. التحقق من نفس الكود خلال الفترة الزمنية المحددة
+    if (code === lastScanCode && (now - lastScanTime) < SAME_CODE_TIMEOUT_MS) {
+        return true;
+    }
+    
+    // 2. التحقق من وجود الكود في السجل خلال الثواني الأخيرة
+    const recentHistory = scanHistory.filter(h => (now - h.time) < SCAN_COOLDOWN_MS);
+    const duplicateInHistory = recentHistory.some(h => h.code === code);
+    if (duplicateInHistory) {
+        return true;
+    }
+    
+    // 3. التأكد من مرور وقت كافي منذ آخر مسح ناجح
+    if (scanHistory.length > 0) {
+        const lastScan = scanHistory[scanHistory.length - 1];
+        if ((now - lastScan.time) < 500) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+function addToScanHistory(code) {
+    scanHistory.push({
+        code: code,
+        time: Date.now()
+    });
+    
+    // الحفاظ على حجم السجل
+    if (scanHistory.length > SCAN_HISTORY_LIMIT) {
+        scanHistory = scanHistory.slice(-SCAN_HISTORY_LIMIT);
+    }
+}
+
+function clearScanHistory() {
+    scanHistory = [];
+    lastScanCode = '';
+    lastScanTime = 0;
+    document.getElementById('scannerResult').innerText = '🔄 تم إعادة تعيين الماسح';
+    document.getElementById('scannerResult').className = 'scanner-result-box scanning';
+    showToast('تم إعادة تعيين الماسح');
+}
+
+function toggleScannerPause() {
+    scannerPaused = !scannerPaused;
+    const btn = document.getElementById('pauseScannerBtn');
+    if (scannerPaused) {
+        btn.innerHTML = '<i class="fas fa-play"></i> استئناف';
+        document.getElementById('scannerResult').innerText = '⏸️ تم إيقاف المسح مؤقتاً';
+        document.getElementById('scannerResult').className = 'scanner-result-box';
+        showToast('تم إيقاف المسح مؤقتاً');
+    } else {
+        btn.innerHTML = '<i class="fas fa-pause"></i> إيقاف مؤقت';
+        document.getElementById('scannerResult').innerText = '📷 استئناف المسح...';
+        document.getElementById('scannerResult').className = 'scanner-result-box scanning';
+        showToast('تم استئناف المسح');
+    }
 }
 
 function stopScanner() {
     scannerActive = false;
+    scannerPaused = false;
     
-    // إلغاء حلقة المسح
     if (detectionLoopId) {
         cancelAnimationFrame(detectionLoopId);
         detectionLoopId = null;
     }
     
-    // إيقاف Quagga
     try {
-        Quagga.offDetected(onBarcodeDetected);
+        Quagga.offDetected(onQuaggaDetected);
         Quagga.stop();
     } catch(e) {}
     
-    // إيقاف تدفق الكاميرا
     if (scannerVideoStream) {
         scannerVideoStream.getTracks().forEach(track => track.stop());
         scannerVideoStream = null;
     }
     
-    // مسح عناصر الفيديو
     const container = document.getElementById('scannerContainer');
     Array.from(container.querySelectorAll('video,canvas')).forEach(el => el.remove());
 }
@@ -938,7 +1029,7 @@ function handleScannedCode(code) {
         return;
     }
     
-    // mode === 'cart' (الوضع الافتراضي): إضافة المنتج للسلة
+    // mode === 'cart' - إضافة المنتج للسلة
     if (p) {
         if (p.stock <= 0) {
             playError();
@@ -950,6 +1041,18 @@ function handleScannedCode(code) {
         resultBox.className = 'scanner-result-box found';
         resultBox.innerText = '✅ تمت الإضافة: ' + p.name + ' (' + formatNumber(p.price.toFixed(2)) + ' ' + settings.currency + ')';
         showToast('✅ أُضيف: ' + p.name);
+        
+        // إيقاف المسح مؤقتاً بعد الإضافة الناجحة لتجنب التكرار
+        scannerPaused = true;
+        document.getElementById('pauseScannerBtn').innerHTML = '<i class="fas fa-play"></i> استئناف';
+        setTimeout(() => {
+            if (scannerActive) {
+                scannerPaused = false;
+                document.getElementById('pauseScannerBtn').innerHTML = '<i class="fas fa-pause"></i> إيقاف مؤقت';
+                document.getElementById('scannerResult').innerText = '📷 جاهز للمسح التالي';
+                document.getElementById('scannerResult').className = 'scanner-result-box scanning';
+            }
+        }, 1500);
     } else {
         playError();
         resultBox.className = 'scanner-result-box notfound';
