@@ -217,17 +217,84 @@
   .img-upload-area { width:80px; height:80px; border:2px dashed var(--border-light); border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-bottom:10px; font-size:28px; color:var(--text-muted); overflow:hidden; position:relative; }
   .img-upload-area img { width:100%; height:100%; object-fit:cover; position:absolute; inset:0; }
 
-  /* Barcode Scanner */
-  #scannerContainer { width:100%; height:280px; position:relative; border-radius:var(--border-radius-sm); overflow:hidden; background:#000; border:2px solid var(--border); }
-  #scannerContainer video, #scannerContainer canvas { width:100% !important; height:100% !important; object-fit:cover; position:absolute; top:0; left:0; }
-  .scanner-overlay-frame { position:absolute; inset:0; z-index:5; pointer-events:none; display:flex; align-items:center; justify-content:center; }
-  .scanner-overlay-frame::before { content:''; width:78%; height:38%; border:2px solid var(--green); border-radius:10px; box-shadow:0 0 0 2000px rgba(0,0,0,.35); }
-  .scanner-line { position:absolute; left:11%; right:11%; height:2px; background:var(--red); box-shadow:0 0 8px var(--red); z-index:6; animation: scanline 1.8s ease-in-out infinite; }
-  @keyframes scanline { 0%,100%{ top:32%; } 50%{ top:64%; } }
-  .scanner-result-box { text-align:center; padding:10px; margin-top:10px; font-size:14px; font-weight:800; min-height:20px; }
-  .scanner-result-box.found { color:var(--green); }
-  .scanner-result-box.notfound { color:var(--red); }
-  .scanner-hint { text-align:center; font-size:11px; color:var(--text-muted); margin-top:8px; }
+  /* Barcode Scanner - Enhanced */
+  #scannerContainer { 
+    width:100%; 
+    height:280px; 
+    position:relative; 
+    border-radius:var(--border-radius-sm); 
+    overflow:hidden; 
+    background:#000; 
+    border:2px solid var(--border);
+  }
+  #scannerContainer video, 
+  #scannerContainer canvas { 
+    width:100% !important; 
+    height:100% !important; 
+    object-fit:cover; 
+    position:absolute; 
+    top:0; 
+    left:0; 
+  }
+  .scanner-overlay-frame {
+    position:absolute;
+    inset:0;
+    z-index:5;
+    pointer-events:none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .scanner-overlay-frame::before {
+    content:'';
+    width:78%;
+    height:38%;
+    border:2px solid var(--green);
+    border-radius:10px;
+    box-shadow:0 0 0 2000px rgba(0,0,0,.35);
+  }
+  .scanner-line {
+    position:absolute;
+    left:11%;
+    right:11%;
+    height:2px;
+    background:var(--red);
+    box-shadow:0 0 8px var(--red);
+    z-index:6;
+    animation: scanline 1.8s ease-in-out infinite;
+  }
+  @keyframes scanline { 
+    0%,100%{ top:32%; } 
+    50%{ top:64%; } 
+  }
+  .scanner-result-box {
+    text-align:center;
+    padding:10px;
+    margin-top:10px;
+    font-size:14px;
+    font-weight:800;
+    min-height:20px;
+    border-radius:8px;
+    background:var(--bg-input);
+    border:1px solid var(--border);
+    transition: all 0.3s;
+  }
+  .scanner-result-box.found { 
+    color:var(--green); 
+    border-color:var(--green);
+    background:rgba(61,214,140,0.1);
+  }
+  .scanner-result-box.notfound { 
+    color:var(--red); 
+    border-color:var(--red);
+    background:rgba(242,85,90,0.1);
+  }
+  .scanner-hint { 
+    text-align:center; 
+    font-size:11px; 
+    color:var(--text-muted); 
+    margin-top:8px; 
+  }
   .barcode-field-row { display:flex; gap:6px; }
   .barcode-field-row input { flex:1; }
   .barcode-field-row .btn { padding:0 14px; }
@@ -281,6 +348,7 @@
     .page-title { font-size:18px; }
     .page-title i { font-size:20px; }
     .scan-fab.show { display:flex; }
+    #scannerContainer { height:220px; }
   }
 </style>
 </head>
@@ -443,7 +511,7 @@
   <div class="modal"><div class="modal-header"><h2 id="gmTitle"></h2><button class="modal-close" onclick="closeModal('genericModal')"><i class="fas fa-times"></i></button></div><div id="gmBody"></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('genericModal')">إلغاء</button><button class="btn btn-primary" id="gmSaveBtn">حفظ</button></div></div>
 </div>
 
-<!-- Barcode Scanner Modal -->
+<!-- Barcode Scanner Modal - Enhanced -->
 <div class="modal-overlay" id="scannerModal">
   <div class="modal" style="max-width:440px;">
     <div class="modal-header"><h2><i class="fas fa-barcode"></i> مسح الباركود</h2><button class="modal-close" onclick="closeScannerModal()"><i class="fas fa-times"></i></button></div>
@@ -451,8 +519,8 @@
       <div class="scanner-overlay-frame"></div>
       <div class="scanner-line"></div>
     </div>
-    <div class="scanner-result-box" id="scannerResult"></div>
-    <div class="scanner-hint">وجّه الكاميرا نحو الباركود ليتم التعرف عليه تلقائياً</div>
+    <div class="scanner-result-box" id="scannerResult">⚡ انتظر تهيئة الكاميرا...</div>
+    <div class="scanner-hint">🔍 وجّه الكاميرا نحو الباركود ليتم التعرف عليه تلقائياً</div>
     <div class="form-group" style="margin-top:14px;">
       <label>أو أدخل الباركود يدوياً</label>
       <div class="barcode-field-row">
@@ -467,7 +535,6 @@
 <div id="receiptContainer" style="display:none;"></div>
 <div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
 <script>
 // ==================== AUDIO ====================
 const AudioCtx = window.AudioContext || window.webkitAudioContext; let audioCtx;
@@ -607,130 +674,302 @@ function deleteProduct(id){ if(!confirm('حذف؟')) return; products=products.f
 async function handleImageUpload(e){ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=async function(ev){ tempProductImage=await compressImage(ev.target.result); document.getElementById('prodImagePreview').src=tempProductImage; document.getElementById('prodImagePreview').style.display='block'; }; r.readAsDataURL(f); }
 function removeProductImage(){ tempProductImage=''; document.getElementById('prodImagePreview').style.display='none'; document.getElementById('prodImageInput').value=''; }
 
-// ==================== BARCODE SCANNER ====================
-// scannerMode: 'cart' -> يبحث عن المنتج بالباركود ويضيفه للسلة ويحسب المجموع تلقائياً
-//              'product' -> يملأ حقل الباركود في نافذة إضافة/تعديل منتج
-//              'inventory-lookup' -> يبحث عن المنتج ويفتح نافذة تعديله مباشرة
+// ==================== BARCODE SCANNER - ENHANCED (BEST SOLUTION) ====================
 let scannerMode = 'cart';
 let scannerActive = false;
 let lastScanTime = 0;
 let lastScanCode = '';
+let scannerVideoStream = null;
+let detectionLoopId = null;
 
-function openBarcodeScanner(mode){
-  scannerMode = mode;
-  const resultBox = document.getElementById('scannerResult');
-  resultBox.innerText = '';
-  resultBox.className = 'scanner-result-box';
-  document.getElementById('manualBarcodeInput').value = '';
-  openModal('scannerModal');
-  setTimeout(startScanner, 150);
-}
+async function openBarcodeScanner(mode){
+    scannerMode = mode;
+    const resultBox = document.getElementById('scannerResult');
+    resultBox.innerText = '⚡ جاري تهيئة الكاميرا...';
+    resultBox.className = 'scanner-result-box';
+    document.getElementById('manualBarcodeInput').value = '';
+    openModal('scannerModal');
 
-function closeScannerModal(){
-  stopScanner();
-  closeModal('scannerModal');
+    // ننتظر قليلاً حتى تظهر النافذة
+    await new Promise(r => setTimeout(r, 400));
+    
+    // نبدأ الماسح
+    startScanner();
 }
 
 function startScanner(){
-  if(scannerActive) return;
-  const container = document.getElementById('scannerContainer');
-  Array.from(container.querySelectorAll('video,canvas')).forEach(el=>el.remove());
-  if(typeof Quagga === 'undefined'){
-    showToast('تعذر تحميل مكتبة المسح، تحقق من الاتصال بالإنترنت','error');
-    return;
-  }
-  Quagga.init({
-    inputStream: {
-      name: 'Live',
-      type: 'LiveStream',
-      target: container,
-      constraints: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
-    },
-    locator: { patchSize: 'medium', halfSample: true },
-    numOfWorkers: navigator.hardwareConcurrency ? Math.min(4, navigator.hardwareConcurrency) : 2,
-    decoder: { readers: ['ean_reader','ean_8_reader','code_128_reader','upc_reader','upc_e_reader','codabar_reader','code_39_reader'] },
-    locate: true
-  }, function(err){
-    if(err){
-      console.error(err);
-      showToast('تعذر تشغيل الكاميرا، تأكد من منح الإذن','error');
-      return;
+    if(scannerActive) {
+        stopScanner();
     }
-    Quagga.start();
-    scannerActive = true;
-  });
-  Quagga.offDetected(onBarcodeDetected);
-  Quagga.onDetected(onBarcodeDetected);
-}
-
-function stopScanner(){
-  if(scannerActive){
-    try{ Quagga.offDetected(onBarcodeDetected); Quagga.stop(); }catch(e){}
-    scannerActive = false;
-  }
-}
-
-function onBarcodeDetected(result){
-  const code = result && result.codeResult ? result.codeResult.code : null;
-  if(!code) return;
-  const now = Date.now();
-  if(code === lastScanCode && now - lastScanTime < 2000) return; // منع التكرار السريع لنفس الكود
-  lastScanTime = now; lastScanCode = code;
-  playBeep(1200,0.1);
-  handleScannedCode(code);
-}
-
-function handleScannedCode(code){
-  const resultBox = document.getElementById('scannerResult');
-  if(scannerMode === 'product'){
-    document.getElementById('prodCode').value = code;
-    resultBox.className = 'scanner-result-box found';
-    resultBox.innerText = 'تم إدخال الباركود: ' + code;
-    showToast('تم إدخال الباركود');
-    setTimeout(closeScannerModal, 400);
-    return;
-  }
-  const p = products.find(x => x.code === code);
-  if(scannerMode === 'inventory-lookup'){
-    if(p){
-      resultBox.className = 'scanner-result-box found';
-      resultBox.innerText = 'تم العثور على: ' + p.name;
-      closeScannerModal();
-      editProduct(p.id);
+    
+    const container = document.getElementById('scannerContainer');
+    
+    // مسح أي عناصر سابقة
+    Array.from(container.querySelectorAll('video,canvas')).forEach(el => el.remove());
+    
+    // إزالة أي تدفق سابق
+    if (scannerVideoStream) {
+        scannerVideoStream.getTracks().forEach(track => track.stop());
+        scannerVideoStream = null;
+    }
+    
+    // التحقق من دعم BarcodeDetector
+    if ('BarcodeDetector' in window) {
+        startNativeScanner(container);
     } else {
-      playError();
-      resultBox.className = 'scanner-result-box notfound';
-      resultBox.innerText = 'لا يوجد منتج بهذا الباركود: ' + code;
+        // إذا لم يدعم المتصفح، نحاول استخدام Quagga كبديل
+        showToast('المتصفح لا يدعم الماسح التلقائي، جرب استخدام الإدخال اليدوي','error');
+        document.getElementById('scannerResult').innerText = '⚠️ الماسح التلقائي غير مدعوم، استخدم الإدخال اليدوي';
+        document.getElementById('scannerResult').className = 'scanner-result-box notfound';
+        // محاولة تحميل Quagga
+        loadQuaggaScanner(container);
     }
-    return;
-  }
-  // mode === 'cart' (الوضع الافتراضي): إضافة المنتج للسلة وحساب المجموع تلقائياً
-  if(p){
-    if(p.stock<=0){
-      playError();
-      resultBox.className = 'scanner-result-box notfound';
-      resultBox.innerText = p.name + ' - نفذت الكمية';
-      return;
-    }
-    addToCart(p.id);
-    resultBox.className = 'scanner-result-box found';
-    resultBox.innerText = 'تمت الإضافة: ' + p.name + ' (' + formatNumber(p.price.toFixed(2)) + ' ' + settings.currency + ')';
-    showToast('أُضيف: ' + p.name);
-  } else {
-    playError();
-    resultBox.className = 'scanner-result-box notfound';
-    resultBox.innerText = 'لم يتم العثور على منتج بهذا الباركود: ' + code;
-    showToast('باركود غير معروف','error');
-  }
 }
 
-function processManualBarcode(){
-  const input = document.getElementById('manualBarcodeInput');
-  const v = input.value.trim();
-  if(!v) return;
-  handleScannedCode(v);
-  input.value = '';
-  input.focus();
+function startNativeScanner(container) {
+    const video = document.createElement('video');
+    video.style.width = '100%';
+    video.style.height = '100%';
+    video.style.objectFit = 'cover';
+    video.setAttribute('playsinline', '');
+    container.prepend(video);
+
+    navigator.mediaDevices.getUserMedia({
+        video: { 
+            facingMode: 'environment',
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+        }
+    }).then(stream => {
+        scannerVideoStream = stream;
+        video.srcObject = stream;
+        video.play();
+        scannerActive = true;
+        document.getElementById('scannerResult').innerText = '📷 وجه الكاميرا نحو الباركود';
+        document.getElementById('scannerResult').className = 'scanner-result-box';
+        
+        // إنشاء ماسح الباركود
+        const barcodeDetector = new BarcodeDetector({
+            formats: ['qr_code', 'ean_13', 'ean_8', 'code_128', 'upc_a', 'upc_e', 'codabar', 'code_39']
+        });
+
+        async function detectBarcode() {
+            if (!scannerActive || !video.srcObject) {
+                return;
+            }
+            
+            try {
+                // التأكد من أن الفيديو جاهز
+                if (video.readyState < 2) {
+                    if (scannerActive) {
+                        detectionLoopId = requestAnimationFrame(detectBarcode);
+                    }
+                    return;
+                }
+                
+                const barcodes = await barcodeDetector.detect(video);
+                if (barcodes.length > 0) {
+                    const code = barcodes[0].rawValue;
+                    const now = Date.now();
+                    if (code === lastScanCode && now - lastScanTime < 2000) {
+                        // منع التكرار السريع
+                        if (scannerActive) {
+                            detectionLoopId = requestAnimationFrame(detectBarcode);
+                        }
+                        return;
+                    }
+                    lastScanTime = now;
+                    lastScanCode = code;
+                    playBeep(1200, 0.1);
+                    handleScannedCode(code);
+                }
+            } catch (e) {
+                console.error('خطأ في المسح:', e);
+            }
+            
+            // الاستمرار في المسح
+            if (scannerActive) {
+                detectionLoopId = requestAnimationFrame(detectBarcode);
+            }
+        }
+        
+        // بدء حلقة المسح
+        if (scannerActive) {
+            detectionLoopId = requestAnimationFrame(detectBarcode);
+        }
+        
+    }).catch(err => {
+        console.error('خطأ في الكاميرا:', err);
+        showToast('تعذر الوصول للكاميرا، تأكد من منح الإذن','error');
+        document.getElementById('scannerResult').innerText = '❌ لا يمكن الوصول للكاميرا';
+        document.getElementById('scannerResult').className = 'scanner-result-box notfound';
+        // محاولة استخدام Quagga كبديل
+        loadQuaggaScanner(container);
+    });
+}
+
+function loadQuaggaScanner(container) {
+    // محاولة تحميل Quagga من CDN إذا لم يكن محملاً
+    if (typeof Quagga === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js';
+        script.onload = function() {
+            startQuaggaScanner(container);
+        };
+        script.onerror = function() {
+            document.getElementById('scannerResult').innerText = '❌ تعذر تحميل الماسح، استخدم الإدخال اليدوي';
+            document.getElementById('scannerResult').className = 'scanner-result-box notfound';
+            showToast('تعذر تحميل الماسح، استخدم الإدخال اليدوي','error');
+        };
+        document.head.appendChild(script);
+    } else {
+        startQuaggaScanner(container);
+    }
+}
+
+function startQuaggaScanner(container) {
+    if (typeof Quagga === 'undefined') {
+        document.getElementById('scannerResult').innerText = '❌ الماسح غير متوفر، استخدم الإدخال اليدوي';
+        document.getElementById('scannerResult').className = 'scanner-result-box notfound';
+        return;
+    }
+    
+    Quagga.init({
+        inputStream: {
+            name: 'Live',
+            type: 'LiveStream',
+            target: container,
+            constraints: {
+                facingMode: 'environment',
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            }
+        },
+        locator: {
+            patchSize: 'medium',
+            halfSample: true
+        },
+        numOfWorkers: navigator.hardwareConcurrency ? Math.min(4, navigator.hardwareConcurrency) : 2,
+        decoder: {
+            readers: ['ean_reader', 'ean_8_reader', 'code_128_reader', 'upc_reader', 'upc_e_reader', 'codabar_reader', 'code_39_reader']
+        },
+        locate: true
+    }, function(err) {
+        if (err) {
+            console.error('خطأ في تهيئة Quagga:', err);
+            showToast('تعذر تشغيل الكاميرا','error');
+            document.getElementById('scannerResult').innerText = '❌ خطأ في تهيئة الكاميرا';
+            document.getElementById('scannerResult').className = 'scanner-result-box notfound';
+            return;
+        }
+        Quagga.start();
+        scannerActive = true;
+        document.getElementById('scannerResult').innerText = '📷 وجه الكاميرا نحو الباركود (Quagga)';
+        document.getElementById('scannerResult').className = 'scanner-result-box';
+    });
+
+    Quagga.offDetected(onBarcodeDetected);
+    Quagga.onDetected(onBarcodeDetected);
+}
+
+function onBarcodeDetected(result) {
+    const code = result && result.codeResult ? result.codeResult.code : null;
+    if (!code) return;
+    const now = Date.now();
+    if (code === lastScanCode && now - lastScanTime < 2000) return;
+    lastScanTime = now;
+    lastScanCode = code;
+    playBeep(1200, 0.1);
+    handleScannedCode(code);
+}
+
+function stopScanner() {
+    scannerActive = false;
+    
+    // إلغاء حلقة المسح
+    if (detectionLoopId) {
+        cancelAnimationFrame(detectionLoopId);
+        detectionLoopId = null;
+    }
+    
+    // إيقاف Quagga
+    try {
+        Quagga.offDetected(onBarcodeDetected);
+        Quagga.stop();
+    } catch(e) {}
+    
+    // إيقاف تدفق الكاميرا
+    if (scannerVideoStream) {
+        scannerVideoStream.getTracks().forEach(track => track.stop());
+        scannerVideoStream = null;
+    }
+    
+    // مسح عناصر الفيديو
+    const container = document.getElementById('scannerContainer');
+    Array.from(container.querySelectorAll('video,canvas')).forEach(el => el.remove());
+}
+
+function handleScannedCode(code) {
+    const resultBox = document.getElementById('scannerResult');
+    
+    if (scannerMode === 'product') {
+        document.getElementById('prodCode').value = code;
+        resultBox.className = 'scanner-result-box found';
+        resultBox.innerText = '✅ تم إدخال الباركود: ' + code;
+        showToast('تم إدخال الباركود');
+        setTimeout(closeScannerModal, 500);
+        return;
+    }
+    
+    const p = products.find(x => x.code === code);
+    
+    if (scannerMode === 'inventory-lookup') {
+        if (p) {
+            resultBox.className = 'scanner-result-box found';
+            resultBox.innerText = '✅ تم العثور على: ' + p.name;
+            closeScannerModal();
+            editProduct(p.id);
+        } else {
+            playError();
+            resultBox.className = 'scanner-result-box notfound';
+            resultBox.innerText = '❌ لا يوجد منتج بهذا الباركود: ' + code;
+            showToast('باركود غير معروف','error');
+        }
+        return;
+    }
+    
+    // mode === 'cart' (الوضع الافتراضي): إضافة المنتج للسلة
+    if (p) {
+        if (p.stock <= 0) {
+            playError();
+            resultBox.className = 'scanner-result-box notfound';
+            resultBox.innerText = '❌ ' + p.name + ' - نفذت الكمية';
+            return;
+        }
+        addToCart(p.id);
+        resultBox.className = 'scanner-result-box found';
+        resultBox.innerText = '✅ تمت الإضافة: ' + p.name + ' (' + formatNumber(p.price.toFixed(2)) + ' ' + settings.currency + ')';
+        showToast('✅ أُضيف: ' + p.name);
+    } else {
+        playError();
+        resultBox.className = 'scanner-result-box notfound';
+        resultBox.innerText = '❌ لم يتم العثور على منتج بهذا الباركود: ' + code;
+        showToast('باركود غير معروف','error');
+    }
+}
+
+function processManualBarcode() {
+    const input = document.getElementById('manualBarcodeInput');
+    const v = input.value.trim();
+    if (!v) return;
+    handleScannedCode(v);
+    input.value = '';
+    input.focus();
+}
+
+function closeScannerModal() {
+    stopScanner();
+    closeModal('scannerModal');
 }
 
 // ==================== RENDERERS ====================
