@@ -491,13 +491,98 @@
 <div class="modal-overlay" id="productModal">
   <div class="modal">
     <div class="modal-header"><h2><i class="fas fa-box"></i> <span id="productModalTitle">منتج جديد</span></h2><button class="modal-close" onclick="closeModal('productModal')"><i class="fas fa-times"></i></button></div>
-    <div class="form-group"><label>صورة</label><div class="img-upload-area" id="imgUploadArea" onclick="document.getElementById('prodImageInput').click()"><i class="fas fa-camera upload-text"></i><img id="prodImagePreview" style="display:none;"></div><input type="file" id="prodImageInput" accept="image/*" style="display:none;" onchange="handleImageUpload(event)"><button type="button" class="btn btn-secondary" style="font-size:10px;padding:4px 8px;margin-top:4px;" onclick="removeProductImage()">إزالة</button></div>
+    
+    <!-- صورة المنتج مع خيارين: تحميل أو تصوير -->
+    <div class="form-group">
+      <label>صورة المنتج</label>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <div class="img-upload-area" id="imgUploadArea" onclick="document.getElementById('prodImageInput').click()" style="width:80px; height:80px; flex-shrink:0;">
+          <i class="fas fa-camera upload-text"></i>
+          <img id="prodImagePreview" style="display:none; width:100%; height:100%; object-fit:cover; position:absolute; inset:0;">
+        </div>
+        <input type="file" id="prodImageInput" accept="image/*" style="display:none;" onchange="handleImageUpload(event)">
+        <div style="display:flex; flex-direction:column; gap:6px; flex:1;">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('prodImageInput').click()" style="font-size:11px;">
+            <i class="fas fa-upload"></i> تحميل صورة
+          </button>
+          <button type="button" class="btn btn-secondary" onclick="captureProductImage()" style="font-size:11px;">
+            <i class="fas fa-camera"></i> تصوير بالكاميرا
+          </button>
+          <button type="button" class="btn btn-secondary" onclick="removeProductImage()" style="font-size:10px; padding:4px 8px;">
+            <i class="fas fa-trash"></i> إزالة
+          </button>
+        </div>
+      </div>
+    </div>
+    
     <div class="form-group"><label>الاسم</label><input type="text" id="prodName"></div>
     <div class="form-group"><label>الفئة</label><select id="prodCategory"></select></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div class="form-group"><label>السعر</label><input type="number" id="prodPrice" step="0.01"></div><div class="form-group"><label>التكلفة</label><input type="number" id="prodCost" step="0.01"></div></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div class="form-group"><label>الكمية</label><input type="number" id="prodStock"></div><div class="form-group"><label>الباركود</label><div class="barcode-field-row"><input type="text" id="prodCode"><button type="button" class="btn btn-secondary" title="مسح الباركود بالكاميرا" onclick="openBarcodeScanner('product')"><i class="fas fa-camera"></i></button></div></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="form-group"><label>السعر</label><input type="number" id="prodPrice" step="0.01"></div>
+      <div class="form-group"><label>التكلفة</label><input type="number" id="prodCost" step="0.01"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="form-group"><label>الكمية</label><input type="number" id="prodStock"></div>
+      <div class="form-group"><label>الباركود</label><div class="barcode-field-row"><input type="text" id="prodCode"><button type="button" class="btn btn-secondary" title="مسح الباركود بالكاميرا" onclick="openBarcodeScanner('product')"><i class="fas fa-camera"></i></button></div></div>
+    </div>
     <div class="form-group"><label>تاريخ الصلاحية</label><input type="date" id="prodExpiry"></div>
-    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('productModal')">إلغاء</button><button class="btn btn-primary" onclick="saveProduct()"><i class="fas fa-save"></i> حفظ</button></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('productModal')">إلغاء</button>
+      <button class="btn btn-primary" onclick="saveProduct()"><i class="fas fa-save"></i> حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- نافذة إضافة المنتج بعد مسح الباركود (مع تحديد الكمية) -->
+<div class="modal-overlay" id="scannedProductModal">
+  <div class="modal" style="max-width:450px;">
+    <div class="modal-header">
+      <h2><i class="fas fa-barcode"></i> <span id="scannedProductTitle">منتج ممسوح</span></h2>
+      <button class="modal-close" onclick="closeModal('scannedProductModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="display:flex; align-items:center; gap:16px; margin-bottom:16px; padding:12px; background:var(--bg-primary); border-radius:var(--border-radius-sm); border:2px solid var(--border);">
+      <div style="width:70px; height:70px; border-radius:12px; overflow:hidden; background:var(--bg-hover); display:flex; align-items:center; justify-content:center; font-size:40px; flex-shrink:0;" id="scannedProductImage">
+        📦
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:18px; font-weight:900; color:var(--text-primary);" id="scannedProductName">اسم المنتج</div>
+        <div style="font-size:14px; color:var(--green); font-weight:700;" id="scannedProductPrice">0.00 دج</div>
+        <div style="font-size:11px; color:var(--text-muted);" id="scannedProductStock">المتبقي: 0</div>
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label>الكمية المطلوبة</label>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button type="button" class="btn btn-secondary" onclick="changeScannedQty(-1)" style="padding:8px 16px; font-size:18px;">-</button>
+        <input type="number" id="scannedQty" value="1" min="1" style="width:80px; text-align:center; font-size:20px; font-weight:900; padding:8px;">
+        <button type="button" class="btn btn-secondary" onclick="changeScannedQty(1)" style="padding:8px 16px; font-size:18px;">+</button>
+        <span style="font-size:12px; color:var(--text-muted);">(الحد الأقصى: <span id="scannedMaxQty">100</span>)</span>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('scannedProductModal')">إلغاء</button>
+      <button class="btn btn-success" onclick="addScannedProductToCart()"><i class="fas fa-cart-plus"></i> إضافة للسلة</button>
+    </div>
+  </div>
+</div>
+
+<!-- نافذة التقاط الصورة بالكاميرا -->
+<div class="modal-overlay" id="cameraModal">
+  <div class="modal" style="max-width:450px;">
+    <div class="modal-header">
+      <h2><i class="fas fa-camera"></i> تصوير المنتج</h2>
+      <button class="modal-close" onclick="closeCameraModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="width:100%; height:300px; position:relative; background:#000; border-radius:var(--border-radius-sm); overflow:hidden; border:2px solid var(--border);">
+      <video id="cameraVideo" style="width:100%; height:100%; object-fit:cover;" autoplay playsinline></video>
+      <canvas id="cameraCanvas" style="display:none;"></canvas>
+    </div>
+    <div style="display:flex; gap:8px; margin-top:12px;">
+      <button class="btn btn-primary" onclick="capturePhoto()" style="flex:1;"><i class="fas fa-camera"></i> التقاط</button>
+      <button class="btn btn-secondary" onclick="closeCameraModal()" style="flex:1;"><i class="fas fa-times"></i> إلغاء</button>
+    </div>
   </div>
 </div>
 
@@ -516,7 +601,7 @@
   <div class="modal"><div class="modal-header"><h2 id="gmTitle"></h2><button class="modal-close" onclick="closeModal('genericModal')"><i class="fas fa-times"></i></button></div><div id="gmBody"></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('genericModal')">إلغاء</button><button class="btn btn-primary" id="gmSaveBtn">حفظ</button></div></div>
 </div>
 
-<!-- Barcode Scanner Modal - Enhanced with Anti-Duplicate -->
+<!-- Barcode Scanner Modal -->
 <div class="modal-overlay" id="scannerModal">
   <div class="modal" style="max-width:440px;">
     <div class="modal-header"><h2><i class="fas fa-barcode"></i> مسح الباركود</h2><button class="modal-close" onclick="closeScannerModal()"><i class="fas fa-times"></i></button></div>
@@ -527,7 +612,6 @@
     <div class="scanner-result-box" id="scannerResult">⚡ انتظر تهيئة الكاميرا...</div>
     <div class="scanner-hint">🔍 وجّه الكاميرا نحو الباركود ليتم التعرف عليه تلقائياً</div>
     
-    <!-- إضافة زر لإيقاف المسح المؤقت -->
     <div style="display:flex; gap:8px; margin-top:8px;">
       <button class="btn btn-secondary" onclick="toggleScannerPause()" id="pauseScannerBtn" style="flex:1;">
         <i class="fas fa-pause"></i> إيقاف مؤقت
@@ -608,7 +692,22 @@ function showPage(id, el){
 }
 
 // ==================== CART ====================
-function addToCart(id){ const p=products.find(x=>x.id===id); if(!p||p.stock<=0){ playError(); return; } const existing=cart.find(i=>i.id===id); if(existing){ if(existing.qty>=p.stock) return; existing.qty++; } else cart.push({id:p.id, name:p.name, price:p.price, qty:1}); renderCart(); playClick(); }
+function addToCart(id, qty=1){ 
+  const p=products.find(x=>x.id===id); 
+  if(!p||p.stock<=0){ playError(); showToast('المنتج غير متوفر','error'); return; } 
+  const existing=cart.find(i=>i.id===id); 
+  if(existing){ 
+    if(existing.qty+qty>p.stock){ showToast('الكمية المطلوبة أكبر من المخزون','error'); return; }
+    existing.qty+=qty; 
+  } else { 
+    if(qty>p.stock){ showToast('الكمية المطلوبة أكبر من المخزون','error'); return; }
+    cart.push({id:p.id, name:p.name, price:p.price, qty:qty}); 
+  } 
+  renderCart(); 
+  playClick(); 
+  showToast('تم إضافة ' + p.name);
+}
+
 function changeQty(idx,d){ const item=cart[idx], p=products.find(x=>x.id===item.id); if(d>0&&p&&item.qty>=p.stock) return; item.qty+=d; if(item.qty<=0) cart.splice(idx,1); renderCart(); }
 function removeItem(idx){ cart.splice(idx,1); renderCart(); }
 function clearCart(){ if(cart.length&&!confirm('إلغاء السلة؟')) return; cart=[]; discountValue=0; renderCart(); }
@@ -675,36 +774,171 @@ function saveAsInvoice(){ if(!cart.length) return; const total=cart.reduce((s,i)
 
 // ==================== MODALS ====================
 function openModal(id){ 
-  if(id==='productModal'){ document.getElementById('prodCategory').innerHTML=categories.map(c=>`<option>${c.name}</option>`).join(''); if(!editingProductId){ document.getElementById('productModalTitle').innerText='منتج جديد'; ['prodName','prodPrice','prodCost','prodStock','prodCode','prodExpiry'].forEach(x=>document.getElementById(x).value=''); removeProductImage(); } }
+  if(id==='productModal'){ 
+    document.getElementById('prodCategory').innerHTML=categories.map(c=>`<option>${c.name}</option>`).join(''); 
+    if(!editingProductId){ 
+      document.getElementById('productModalTitle').innerText='منتج جديد'; 
+      ['prodName','prodPrice','prodCost','prodStock','prodCode','prodExpiry'].forEach(x=>document.getElementById(x).value=''); 
+      removeProductImage(); 
+    } 
+  }
   document.getElementById(id).classList.add('active');
 }
-function closeModal(id){ document.getElementById(id).classList.remove('active'); if(id==='productModal'){ editingProductId=null; tempProductImage=''; } if(id==='scannerModal'){ stopScanner(); } }
+function closeModal(id){ 
+  document.getElementById(id).classList.remove('active'); 
+  if(id==='productModal'){ editingProductId=null; tempProductImage=''; } 
+  if(id==='scannerModal'){ stopScanner(); } 
+  if(id==='cameraModal'){ closeCameraModal(); }
+}
+
+// ==================== PRODUCT IMAGE - WITH CAMERA CAPTURE ====================
+let cameraStream = null;
+let capturedImageData = null;
+
+function captureProductImage() {
+  // فتح نافذة الكاميرا
+  document.getElementById('cameraModal').classList.add('active');
+  startCamera();
+}
+
+function startCamera() {
+  const video = document.getElementById('cameraVideo');
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
+  }).then(stream => {
+    cameraStream = stream;
+    video.srcObject = stream;
+    video.play();
+  }).catch(err => {
+    showToast('تعذر الوصول للكاميرا','error');
+    closeCameraModal();
+  });
+}
+
+function capturePhoto() {
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+  
+  // تحويل الصورة إلى Base64
+  const imageData = canvas.toDataURL('image/jpeg', 0.8);
+  capturedImageData = imageData;
+  
+  // عرض الصورة في منطقة تحميل الصورة
+  tempProductImage = imageData;
+  document.getElementById('prodImagePreview').src = imageData;
+  document.getElementById('prodImagePreview').style.display = 'block';
+  document.querySelector('#imgUploadArea .upload-text').style.display = 'none';
+  
+  closeCameraModal();
+  showToast('تم التقاط الصورة بنجاح');
+}
+
+function closeCameraModal() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+  }
+  document.getElementById('cameraModal').classList.remove('active');
+}
+
+async function handleImageUpload(e){ 
+  const f=e.target.files[0]; 
+  if(!f) return; 
+  const r=new FileReader(); 
+  r.onload=async function(ev){ 
+    tempProductImage=await compressImage(ev.target.result); 
+    document.getElementById('prodImagePreview').src=tempProductImage; 
+    document.getElementById('prodImagePreview').style.display='block'; 
+    document.querySelector('#imgUploadArea .upload-text').style.display='none';
+  }; 
+  r.readAsDataURL(f); 
+}
+
+function removeProductImage(){ 
+  tempProductImage=''; 
+  document.getElementById('prodImagePreview').style.display='none'; 
+  document.getElementById('prodImagePreview').src='';
+  document.querySelector('#imgUploadArea .upload-text').style.display='block';
+  document.getElementById('prodImageInput').value=''; 
+}
+
+// ==================== SCANNED PRODUCT MODAL (مع تحديد الكمية) ====================
+let scannedProductData = null;
+let scannedQty = 1;
+
+function showScannedProductModal(product) {
+  scannedProductData = product;
+  scannedQty = 1;
+  
+  document.getElementById('scannedProductTitle').innerText = 'منتج ممسوح';
+  document.getElementById('scannedProductName').innerText = product.name;
+  document.getElementById('scannedProductPrice').innerText = formatNumber(product.price.toFixed(2)) + ' ' + settings.currency;
+  document.getElementById('scannedProductStock').innerText = 'المتبقي: ' + product.stock;
+  document.getElementById('scannedMaxQty').innerText = product.stock;
+  document.getElementById('scannedQty').value = 1;
+  document.getElementById('scannedQty').max = product.stock;
+  
+  // عرض الصورة
+  const imgContainer = document.getElementById('scannedProductImage');
+  if (product.image) {
+    imgContainer.innerHTML = `<img src="${product.image}" style="width:100%; height:100%; object-fit:cover;">`;
+  } else {
+    imgContainer.innerHTML = product.icon || '📦';
+  }
+  
+  openModal('scannedProductModal');
+}
+
+function changeScannedQty(delta) {
+  const input = document.getElementById('scannedQty');
+  let val = parseInt(input.value) || 1;
+  val = Math.max(1, Math.min(scannedProductData.stock, val + delta));
+  input.value = val;
+  scannedQty = val;
+}
+
+function addScannedProductToCart() {
+  if (!scannedProductData) return;
+  const qty = parseInt(document.getElementById('scannedQty').value) || 1;
+  if (qty > scannedProductData.stock) {
+    showToast('الكمية المطلوبة أكبر من المخزون','error');
+    return;
+  }
+  addToCart(scannedProductData.id, qty);
+  closeModal('scannedProductModal');
+  scannedProductData = null;
+}
+
+// ==================== SAVE PRODUCT ====================
 function saveProduct(){
-  const name=document.getElementById('prodName').value.trim(); if(!name){ playError(); return; }
+  const name=document.getElementById('prodName').value.trim(); 
+  if(!name){ playError(); showToast('الاسم مطلوب','error'); return; }
   const data={name, icon:document.getElementById('prodIcon')?.value||'📦', category:document.getElementById('prodCategory').value, price:parseFloat(document.getElementById('prodPrice').value)||0, cost:parseFloat(document.getElementById('prodCost').value)||0, stock:parseInt(document.getElementById('prodStock').value)||0, code:document.getElementById('prodCode').value||'P'+Date.now(), expiry:document.getElementById('prodExpiry').value||'', image:tempProductImage||(editingProductId?products.find(x=>x.id===editingProductId)?.image||'':''), type:'regular'};
   if(editingProductId){ Object.assign(products.find(x=>x.id===editingProductId), data); } else { data.id=Date.now(); products.push(data); }
   DB.save('products',products); closeModal('productModal'); renderInventory(); renderProducts(); renderFruits(); playClick(); showToast('تم الحفظ');
 }
-function editProduct(id){ const p=products.find(x=>x.id===id); if(!p) return; editingProductId=id; document.getElementById('productModalTitle').innerText='تعديل منتج'; openModal('productModal'); setTimeout(()=>{ document.getElementById('prodName').value=p.name; document.getElementById('prodCategory').value=p.category; document.getElementById('prodPrice').value=p.price; document.getElementById('prodCost').value=p.cost; document.getElementById('prodStock').value=p.stock; document.getElementById('prodCode').value=p.code||''; document.getElementById('prodExpiry').value=p.expiry||''; tempProductImage=p.image||''; if(p.image){ document.getElementById('prodImagePreview').src=p.image; document.getElementById('prodImagePreview').style.display='block'; } else removeProductImage(); },100); }
-function deleteProduct(id){ if(!confirm('حذف؟')) return; products=products.filter(p=>p.id!==id); DB.save('products',products); renderInventory(); renderProducts(); }
-async function handleImageUpload(e){ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=async function(ev){ tempProductImage=await compressImage(ev.target.result); document.getElementById('prodImagePreview').src=tempProductImage; document.getElementById('prodImagePreview').style.display='block'; }; r.readAsDataURL(f); }
-function removeProductImage(){ tempProductImage=''; document.getElementById('prodImagePreview').style.display='none'; document.getElementById('prodImageInput').value=''; }
 
-// ==================== BARCODE SCANNER - IMPROVED WITH ANTI-DUPLICATE ====================
+function editProduct(id){ const p=products.find(x=>x.id===id); if(!p) return; editingProductId=id; document.getElementById('productModalTitle').innerText='تعديل منتج'; openModal('productModal'); setTimeout(()=>{ document.getElementById('prodName').value=p.name; document.getElementById('prodCategory').value=p.category; document.getElementById('prodPrice').value=p.price; document.getElementById('prodCost').value=p.cost; document.getElementById('prodStock').value=p.stock; document.getElementById('prodCode').value=p.code||''; document.getElementById('prodExpiry').value=p.expiry||''; tempProductImage=p.image||''; if(p.image){ document.getElementById('prodImagePreview').src=p.image; document.getElementById('prodImagePreview').style.display='block'; document.querySelector('#imgUploadArea .upload-text').style.display='none'; } else removeProductImage(); },100); }
+function deleteProduct(id){ if(!confirm('حذف؟')) return; products=products.filter(p=>p.id!==id); DB.save('products',products); renderInventory(); renderProducts(); }
+
+// ==================== BARCODE SCANNER - IMPROVED ====================
 let scannerMode = 'cart';
 let scannerActive = false;
 let scannerPaused = false;
 let lastScanTime = 0;
 let lastScanCode = '';
-let scanHistory = []; // سجل آخر 20 عملية مسح
+let scanHistory = [];
 let scannerVideoStream = null;
 let detectionLoopId = null;
 let detectionAttempts = 0;
 
-// إعدادات مكافحة التكرار
-const SCAN_COOLDOWN_MS = 3000; // 3 ثواني بين كل مسح
+const SCAN_COOLDOWN_MS = 3000;
 const SCAN_HISTORY_LIMIT = 20;
-const SAME_CODE_TIMEOUT_MS = 5000; // 5 ثواني لنفس الكود
+const SAME_CODE_TIMEOUT_MS = 5000;
 
 async function openBarcodeScanner(mode){
     scannerMode = mode;
@@ -732,7 +966,6 @@ function startScanner(){
         scannerVideoStream = null;
     }
     
-    // محاولة استخدام BarcodeDetector أولاً
     if ('BarcodeDetector' in window) {
         startNativeScanner(container);
     } else {
@@ -786,25 +1019,20 @@ function startNativeScanner(container) {
                 if (barcodes.length > 0) {
                     const code = barcodes[0].rawValue;
                     
-                    // التحقق من صحة الباركود (تجاهل الأرقام القصيرة جداً)
                     if (code && code.length >= 4) {
                         const now = Date.now();
                         
-                        // التحقق من التكرار باستخدام عدة معايير
                         if (!isDuplicateScan(code, now)) {
                             lastScanTime = now;
                             lastScanCode = code;
                             addToScanHistory(code);
                             playBeep(1200, 0.1);
-                            handleScannedCode(code);
                             
-                            // تحديث واجهة المستخدم
-                            document.getElementById('scannerResult').className = 'scanner-result-box found';
-                            document.getElementById('scannerResult').innerText = '✅ تم المسح: ' + code;
+                            // معالجة الباركود حسب الوضع
+                            handleScannedCode(code);
                         }
                     }
                 } else {
-                    // إذا لم يتم العثور على باركود لفترة، نغير الرسالة
                     if (detectionAttempts % 30 === 0) {
                         document.getElementById('scannerResult').className = 'scanner-result-box scanning';
                         document.getElementById('scannerResult').innerText = '📷 جاري البحث عن باركود...';
@@ -835,12 +1063,9 @@ function startNativeScanner(container) {
 
 function startQuaggaScanner(container) {
     if (typeof Quagga === 'undefined') {
-        // محاولة تحميل Quagga من CDN
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js';
-        script.onload = function() {
-            initQuagga(container);
-        };
+        script.onload = function() { initQuagga(container); };
         script.onerror = function() {
             document.getElementById('scannerResult').innerText = '❌ تعذر تحميل الماسح، استخدم الإدخال اليدوي';
             document.getElementById('scannerResult').className = 'scanner-result-box notfound';
@@ -910,43 +1135,22 @@ function onQuaggaDetected(result) {
         addToScanHistory(code);
         playBeep(1200, 0.1);
         handleScannedCode(code);
-        document.getElementById('scannerResult').className = 'scanner-result-box found';
-        document.getElementById('scannerResult').innerText = '✅ تم المسح: ' + code;
     }
 }
 
-// وظائف مكافحة التكرار المحسّنة
 function isDuplicateScan(code, now) {
-    // 1. التحقق من نفس الكود خلال الفترة الزمنية المحددة
-    if (code === lastScanCode && (now - lastScanTime) < SAME_CODE_TIMEOUT_MS) {
-        return true;
-    }
+    if (code === lastScanCode && (now - lastScanTime) < SAME_CODE_TIMEOUT_MS) return true;
     
-    // 2. التحقق من وجود الكود في السجل خلال الثواني الأخيرة
     const recentHistory = scanHistory.filter(h => (now - h.time) < SCAN_COOLDOWN_MS);
-    const duplicateInHistory = recentHistory.some(h => h.code === code);
-    if (duplicateInHistory) {
-        return true;
-    }
+    if (recentHistory.some(h => h.code === code)) return true;
     
-    // 3. التأكد من مرور وقت كافي منذ آخر مسح ناجح
-    if (scanHistory.length > 0) {
-        const lastScan = scanHistory[scanHistory.length - 1];
-        if ((now - lastScan.time) < 500) {
-            return true;
-        }
-    }
+    if (scanHistory.length > 0 && (now - scanHistory[scanHistory.length-1].time) < 500) return true;
     
     return false;
 }
 
 function addToScanHistory(code) {
-    scanHistory.push({
-        code: code,
-        time: Date.now()
-    });
-    
-    // الحفاظ على حجم السجل
+    scanHistory.push({ code: code, time: Date.now() });
     if (scanHistory.length > SCAN_HISTORY_LIMIT) {
         scanHistory = scanHistory.slice(-SCAN_HISTORY_LIMIT);
     }
@@ -1003,6 +1207,7 @@ function stopScanner() {
 function handleScannedCode(code) {
     const resultBox = document.getElementById('scannerResult');
     
+    // وضع إدخال الباركود في نموذج المنتج
     if (scannerMode === 'product') {
         document.getElementById('prodCode').value = code;
         resultBox.className = 'scanner-result-box found';
@@ -1014,6 +1219,7 @@ function handleScannedCode(code) {
     
     const p = products.find(x => x.code === code);
     
+    // وضع البحث في المخزون
     if (scannerMode === 'inventory-lookup') {
         if (p) {
             resultBox.className = 'scanner-result-box found';
@@ -1029,7 +1235,7 @@ function handleScannedCode(code) {
         return;
     }
     
-    // mode === 'cart' - إضافة المنتج للسلة
+    // الوضع الأساسي: إضافة إلى السلة مع تحديد الكمية
     if (p) {
         if (p.stock <= 0) {
             playError();
@@ -1037,22 +1243,11 @@ function handleScannedCode(code) {
             resultBox.innerText = '❌ ' + p.name + ' - نفذت الكمية';
             return;
         }
-        addToCart(p.id);
-        resultBox.className = 'scanner-result-box found';
-        resultBox.innerText = '✅ تمت الإضافة: ' + p.name + ' (' + formatNumber(p.price.toFixed(2)) + ' ' + settings.currency + ')';
-        showToast('✅ أُضيف: ' + p.name);
         
-        // إيقاف المسح مؤقتاً بعد الإضافة الناجحة لتجنب التكرار
-        scannerPaused = true;
-        document.getElementById('pauseScannerBtn').innerHTML = '<i class="fas fa-play"></i> استئناف';
-        setTimeout(() => {
-            if (scannerActive) {
-                scannerPaused = false;
-                document.getElementById('pauseScannerBtn').innerHTML = '<i class="fas fa-pause"></i> إيقاف مؤقت';
-                document.getElementById('scannerResult').innerText = '📷 جاهز للمسح التالي';
-                document.getElementById('scannerResult').className = 'scanner-result-box scanning';
-            }
-        }, 1500);
+        // إغلاق الماسح وفتح نافذة تحديد الكمية
+        closeScannerModal();
+        showScannedProductModal(p);
+        
     } else {
         playError();
         resultBox.className = 'scanner-result-box notfound';
