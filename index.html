@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Bichi - نظام نقاط البيع المتكامل</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
   
@@ -217,7 +220,7 @@
   .img-upload-area { width:80px; height:80px; border:2px dashed var(--border-light); border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-bottom:10px; font-size:28px; color:var(--text-muted); overflow:hidden; position:relative; }
   .img-upload-area img { width:100%; height:100%; object-fit:cover; position:absolute; inset:0; }
 
-  /* Barcode Scanner - Enhanced with better controls */
+  /* Barcode Scanner */
   #scannerContainer { 
     width:100%; 
     height:280px; 
@@ -316,7 +319,6 @@
   .cart-fab.show { display:flex; }
   .cart-fab .badge { position:absolute; top:-4px; right:-4px; background:var(--red); color:#fff; font-size:11px; border-radius:50%; min-width:20px; height:20px; display:flex; align-items:center; justify-content:center; font-weight:800; }
 
-  /* Floating scan button (mobile) */
   .scan-fab { display:none; position:fixed; bottom:90px; right:24px; z-index:299; width:50px; height:50px; border-radius:50%; background:var(--gradient-green); color:#fff; font-size:20px; box-shadow:var(--shadow-lg); align-items:center; justify-content:center; cursor:pointer; border:none; }
   .scan-fab.show { display:flex; }
 
@@ -455,7 +457,7 @@
     </div>
   </div>
 
-  <!-- Other Pages (Compact) -->
+  <!-- Other Pages -->
   <div class="page" id="page-sales"><div class="page-header"><div class="page-title"><i class="fas fa-receipt"></i> سجل المبيعات</div><button class="btn btn-primary" onclick="exportSales()"><i class="fas fa-download"></i> تصدير</button></div><table class="data-table"><thead><tr><th>الفاتورة</th><th>التاريخ</th><th>الزبون</th><th>المبلغ</th></tr></thead><tbody id="salesTableBody"></tbody></table></div>
   <div class="page" id="page-cashier"><div class="page-header"><div class="page-title"><i class="fas fa-money-bill-wave"></i> الصندوق</div></div><div style="display:flex;gap:8px;margin-bottom:16px;"><button class="btn btn-success" onclick="cashMove('in')"><i class="fas fa-plus"></i> إضافة</button><button class="btn btn-danger" onclick="cashMove('out')"><i class="fas fa-minus"></i> سحب</button></div><table class="data-table"><thead><tr><th>التاريخ</th><th>النوع</th><th>المبلغ</th></tr></thead><tbody id="cashierTableBody"></tbody></table></div>
   <div class="page" id="page-inventory"><div class="page-header"><div class="page-title"><i class="fas fa-boxes"></i> المخزون</div><div style="display:flex;gap:8px;"><button class="btn btn-secondary" onclick="openBarcodeScanner('inventory-lookup')"><i class="fas fa-barcode"></i> بحث بالباركود</button><button class="btn btn-primary" onclick="openModal('productModal')"><i class="fas fa-plus"></i> منتج</button></div></div><table class="data-table"><thead><tr><th>الاسم</th><th>السعر</th><th>الكمية</th><th>إجراءات</th></tr></thead><tbody id="inventoryTableBody"></tbody></table></div>
@@ -492,7 +494,6 @@
   <div class="modal">
     <div class="modal-header"><h2><i class="fas fa-box"></i> <span id="productModalTitle">منتج جديد</span></h2><button class="modal-close" onclick="closeModal('productModal')"><i class="fas fa-times"></i></button></div>
     
-    <!-- صورة المنتج مع خيارين: تحميل أو تصوير -->
     <div class="form-group">
       <label>صورة المنتج</label>
       <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
@@ -533,7 +534,7 @@
   </div>
 </div>
 
-<!-- نافذة إضافة المنتج بعد مسح الباركود (مع تحديد الكمية) -->
+<!-- نافذة إضافة المنتج بعد مسح الباركود -->
 <div class="modal-overlay" id="scannedProductModal">
   <div class="modal" style="max-width:450px;">
     <div class="modal-header">
@@ -568,7 +569,7 @@
   </div>
 </div>
 
-<!-- نافذة التقاط الصورة بالكاميرا -->
+<!-- نافذة التقاط الصورة -->
 <div class="modal-overlay" id="cameraModal">
   <div class="modal" style="max-width:450px;">
     <div class="modal-header">
@@ -636,16 +637,41 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// ============================================================
+// ==================== SUPABASE CONFIG ====================
+// ============================================================
+
+const SUPABASE_URL = 'https://rikzyrwprccygkxibrha.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_t9z4Ges2Y7hYXOv2KkxQ7A_FcxKPB63';
+
+// إنشاء عميل Supabase
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ============================================================
 // ==================== AUDIO ====================
-const AudioCtx = window.AudioContext || window.webkitAudioContext; let audioCtx;
+// ============================================================
+
+const AudioCtx = window.AudioContext || window.webkitAudioContext; 
+let audioCtx;
 function getAudioCtx(){ if(!audioCtx) audioCtx = new AudioCtx(); return audioCtx; }
 function playBeep(f=800,d=0.08,t='sine',v=0.1){ try{ const c=getAudioCtx(),o=c.createOscillator(),g=c.createGain(); o.type=t; o.frequency.value=f; g.gain.setValueAtTime(v,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+d); o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime+d); }catch(e){} }
 function playClick(){ playBeep(600,0.05); }
 function playSale(){ playBeep(1000,0.1); setTimeout(()=>playBeep(1500,0.15),100); }
 function playError(){ playBeep(200,0.2,'square'); }
 
+// ============================================================
 // ==================== DATA ====================
-const DB = { load(k,d){ try{ return JSON.parse(localStorage.getItem('bichi_'+k))??d; }catch{ return d; } }, save(k,v){ localStorage.setItem('bichi_'+k,JSON.stringify(v)); } };
+// ============================================================
+
+const DB = { 
+    load(k,d){ 
+        try{ return JSON.parse(localStorage.getItem('bichi_'+k))??d; }catch{ return d; } 
+    }, 
+    save(k,v){ 
+        localStorage.setItem('bichi_'+k,JSON.stringify(v)); 
+    } 
+};
+
 function formatNumber(n){ return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g,','); }
 function compressImage(u,w=200,q=0.5){ return new Promise(r=>{ const i=new Image(); i.onload=()=>{ const c=document.createElement('canvas'); let x=i.width,y=i.height; if(x>w){ y=y*(w/x); x=w; } c.width=x; c.height=y; c.getContext('2d').drawImage(i,0,0,x,y); r(c.toDataURL('image/jpeg',q)); }; i.src=u; }); }
 
@@ -661,27 +687,201 @@ let products = DB.load('products', [
   {id:9, name:'خبز', icon:'🍞', category:'مخبوزات', price:20, cost:12, stock:60, code:'P009', image:'', expiry:'', type:'regular'},
   {id:10, name:'بيض', icon:'🥚', category:'ألبان', price:15, cost:10, stock:100, code:'P010', image:'', expiry:'', type:'regular'},
 ]);
+
 let categories = DB.load('categories', [{id:1, name:'مواد غذائية', icon:'🥫'},{id:2, name:'مشروبات', icon:'🥤'},{id:3, name:'ألبان', icon:'🥛'},{id:4, name:'خضر', icon:'🥬'},{id:5, name:'فواكه', icon:'🍎'}]);
 let sales = DB.load('sales', []), customers = DB.load('customers', [{id:1, name:'زبون عادي', phone:'0500000000'}]);
 let suppliers = DB.load('suppliers', [{id:1, name:'مورد المواد الغذائية', phone:'0555111222', products:'مواد غذائية', note:'مورد رئيسي'}]);
-let purchases = DB.load('purchases', []), cashMovements = DB.load('cash', []);
+let cashMovements = DB.load('cash', []);
 let users = DB.load('users', [{id:1, username:'admin', password:'admin', role:'مدير', active:true}]);
-let promotions = DB.load('promotions', []), debts = DB.load('debts', []);
+let debts = DB.load('debts', []);
 let settings = DB.load('settings', {storeName:'متجر Bichi', storeAddress:'الجزائر', currency:'دج', tax:0, receiptMsg:'شكراً لزيارتكم!'});
+
 let cart = [], discountValue = 0, currentCategory = 'الكل', selectedCustomer = null, paymentMethod = 'نقدي';
 let tempProductImage = '', editingProductId = null;
 
+// ============================================================
+// ==================== SUPABASE FUNCTIONS ====================
+// ============================================================
+
+// حفظ جميع البيانات إلى Supabase
+async function syncAllToSupabase() {
+    try {
+        showToast('🔄 جاري المزامنة مع السحابة...');
+        
+        // حفظ المنتجات
+        await supabaseClient.from('products').delete().neq('id', 0);
+        if (products.length > 0) {
+            const { error } = await supabaseClient.from('products').insert(products);
+            if (error) throw error;
+        }
+        
+        // حفظ المبيعات
+        await supabaseClient.from('sales').delete().neq('id', '');
+        if (sales.length > 0) {
+            const { error } = await supabaseClient.from('sales').insert(sales);
+            if (error) throw error;
+        }
+        
+        // حفظ العملاء
+        await supabaseClient.from('customers').delete().neq('id', 0);
+        if (customers.length > 0) {
+            const { error } = await supabaseClient.from('customers').insert(customers);
+            if (error) throw error;
+        }
+        
+        // حفظ الموردين
+        await supabaseClient.from('suppliers').delete().neq('id', 0);
+        if (suppliers.length > 0) {
+            const { error } = await supabaseClient.from('suppliers').insert(suppliers);
+            if (error) throw error;
+        }
+        
+        // حفظ الديون
+        await supabaseClient.from('debts').delete().neq('id', 0);
+        if (debts.length > 0) {
+            const { error } = await supabaseClient.from('debts').insert(debts);
+            if (error) throw error;
+        }
+        
+        // حفظ حركات الصندوق
+        await supabaseClient.from('cash_movements').delete().neq('id', 0);
+        if (cashMovements.length > 0) {
+            const { error } = await supabaseClient.from('cash_movements').insert(cashMovements);
+            if (error) throw error;
+        }
+        
+        // حفظ الإعدادات
+        await supabaseClient.from('settings').delete().neq('id', 1);
+        const { error } = await supabaseClient.from('settings').insert([{ id: 1, ...settings }]);
+        if (error) throw error;
+        
+        showToast('✅ تم حفظ البيانات في السحابة');
+        console.log('✅ تمت المزامنة مع Supabase');
+    } catch (error) {
+        console.error('❌ خطأ في المزامنة:', error);
+        showToast('❌ خطأ في المزامنة مع السحابة', 'error');
+    }
+}
+
+// تحميل جميع البيانات من Supabase
+async function loadAllFromSupabase() {
+    try {
+        showToast('🔄 جاري تحميل البيانات من السحابة...');
+        
+        // تحميل المنتجات
+        const { data: productsData, error: productsError } = await supabaseClient
+            .from('products')
+            .select('*')
+            .order('id');
+        if (!productsError && productsData.length > 0) {
+            products = productsData;
+        }
+        
+        // تحميل المبيعات
+        const { data: salesData, error: salesError } = await supabaseClient
+            .from('sales')
+            .select('*')
+            .order('date', { ascending: false });
+        if (!salesError && salesData.length > 0) {
+            sales = salesData;
+        }
+        
+        // تحميل العملاء
+        const { data: customersData, error: customersError } = await supabaseClient
+            .from('customers')
+            .select('*')
+            .order('id');
+        if (!customersError && customersData.length > 0) {
+            customers = customersData;
+        }
+        
+        // تحميل الموردين
+        const { data: suppliersData, error: suppliersError } = await supabaseClient
+            .from('suppliers')
+            .select('*')
+            .order('id');
+        if (!suppliersError && suppliersData.length > 0) {
+            suppliers = suppliersData;
+        }
+        
+        // تحميل الديون
+        const { data: debtsData, error: debtsError } = await supabaseClient
+            .from('debts')
+            .select('*')
+            .order('id');
+        if (!debtsError && debtsData.length > 0) {
+            debts = debtsData;
+        }
+        
+        // تحميل حركات الصندوق
+        const { data: cashData, error: cashError } = await supabaseClient
+            .from('cash_movements')
+            .select('*')
+            .order('id');
+        if (!cashError && cashData.length > 0) {
+            cashMovements = cashData;
+        }
+        
+        // تحميل الإعدادات
+        const { data: settingsData, error: settingsError } = await supabaseClient
+            .from('settings')
+            .select('*')
+            .eq('id', 1)
+            .single();
+        if (!settingsError && settingsData) {
+            delete settingsData.id;
+            settings = { ...settings, ...settingsData };
+        }
+        
+        // حفظ محلياً
+        DB.save('products', products);
+        DB.save('sales', sales);
+        DB.save('customers', customers);
+        DB.save('suppliers', suppliers);
+        DB.save('debts', debts);
+        DB.save('cash', cashMovements);
+        DB.save('settings', settings);
+        
+        showToast('✅ تم تحميل البيانات من السحابة');
+        console.log('✅ تم تحميل البيانات من Supabase');
+        return true;
+    } catch (error) {
+        console.error('❌ خطأ في تحميل البيانات:', error);
+        showToast('⚠️ استخدام البيانات المحلية', 'error');
+        return false;
+    }
+}
+
+// ============================================================
 // ==================== THEME & SIDEBAR ====================
+// ============================================================
+
 function toggleTheme(){ document.body.classList.toggle('light-theme'); document.getElementById('themeBtn').querySelector('i').className = document.body.classList.contains('light-theme')?'fas fa-sun':'fas fa-moon'; localStorage.setItem('bichi_theme', document.body.classList.contains('light-theme')?'light':'dark'); }
 if(localStorage.getItem('bichi_theme')==='light'){ document.body.classList.add('light-theme'); document.getElementById('themeBtn').querySelector('i').className='fas fa-sun'; }
 function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
 
+// ============================================================
 // ==================== AUTH ====================
-function doLogin(){ const u=document.getElementById('loginUser').value.trim(), p=document.getElementById('loginPass').value; const user=users.find(x=>x.username===u&&x.password===p&&x.active); if(!user){ playError(); showToast('خطأ!','error'); return; } localStorage.setItem('bichi_currentUser',JSON.stringify(user)); document.getElementById('currentUserName').innerText=user.username; document.getElementById('userAvatar').innerText=user.username[0].toUpperCase(); document.getElementById('loginPage').style.display='none'; initApp(); }
+// ============================================================
+
+function doLogin(){ 
+    const u=document.getElementById('loginUser').value.trim(), p=document.getElementById('loginPass').value; 
+    const user=users.find(x=>x.username===u&&x.password===p&&x.active); 
+    if(!user){ playError(); showToast('خطأ!','error'); return; } 
+    localStorage.setItem('bichi_currentUser',JSON.stringify(user)); 
+    document.getElementById('currentUserName').innerText=user.username; 
+    document.getElementById('userAvatar').innerText=user.username[0].toUpperCase(); 
+    document.getElementById('loginPage').style.display='none'; 
+    initApp(); 
+}
+
 function doLogout(){ localStorage.removeItem('bichi_currentUser'); document.getElementById('loginPage').style.display='flex'; }
 function getCurrentUser(){ try{ return JSON.parse(localStorage.getItem('bichi_currentUser')); }catch{ return null; } }
 
+// ============================================================
 // ==================== PAGES ====================
+// ============================================================
+
 function showPage(id, el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
@@ -691,7 +891,10 @@ function showPage(id, el){
   if(renderers[id]) renderers[id]();
 }
 
+// ============================================================
 // ==================== CART ====================
+// ============================================================
+
 function addToCart(id, qty=1){ 
   const p=products.find(x=>x.id===id); 
   if(!p||p.stock<=0){ playError(); showToast('المنتج غير متوفر','error'); return; } 
@@ -743,7 +946,10 @@ function closeCartDrawer(){
   document.getElementById('cartDrawerOverlay').classList.remove('show');
 }
 
+// ============================================================
 // ==================== PRODUCTS ====================
+// ============================================================
+
 function renderProducts(){
   const grid = document.getElementById('productsGrid'); if(!grid) return;
   const search = document.getElementById('globalSearch')?.value?.toLowerCase()||'';
@@ -754,10 +960,14 @@ function renderProducts(){
 }
 function filterByCategory(cat){ currentCategory=cat; document.querySelectorAll('.cat-tab').forEach(t=>t.classList.toggle('active', t.innerText===cat)); renderProducts(); }
 
+// ============================================================
 // ==================== PAYMENT ====================
+// ============================================================
+
 function openPayment(){ if(cart.length===0) return; document.getElementById('payTotal').innerText=formatNumber((cart.reduce((s,i)=>s+i.price*i.qty,0)-discountValue).toFixed(2)); document.getElementById('payReceived').value=(cart.reduce((s,i)=>s+i.price*i.qty,0)-discountValue).toFixed(2); document.getElementById('payChange').value='0.00'; openModal('paymentModal'); }
 function selectPayMethod(el,m){ document.querySelectorAll('.pm-btn').forEach(b=>b.classList.remove('active')); el.classList.add('active'); paymentMethod=m; }
 function calcChange(){ const t=parseFloat(document.getElementById('payTotal').innerText.replace(/,/g,'')), r=parseFloat(document.getElementById('payReceived').value)||0; document.getElementById('payChange').value=formatNumber(Math.max(0,r-t).toFixed(2)); }
+
 function completePayment(){
   const total=cart.reduce((s,i)=>s+i.price*i.qty,0)-discountValue, received=parseFloat(document.getElementById('payReceived').value)||0;
   if(received<total&&paymentMethod==='نقدي'){ playError(); showToast('المبلغ غير كافي','error'); return; }
@@ -765,14 +975,22 @@ function completePayment(){
   const invoice={id:'INV-'+Date.now(), date:new Date().toISOString(), customer:selectedCustomer||'زبون عادي', items:JSON.parse(JSON.stringify(cart)), subtotal:cart.reduce((s,i)=>s+i.price*i.qty,0), discount:discountValue, total, received, change:Math.max(0,received-total), payment:paymentMethod, status:'paid'};
   sales.push(invoice); cashMovements.push({date:invoice.date, type:'in', amount:total, desc:'مبيعات '+invoice.id});
   DB.save('products',products); DB.save('sales',sales); DB.save('cash',cashMovements);
+  
+  // مزامنة مع Supabase
+  syncAllToSupabase();
+  
   closeModal('paymentModal'); cart=[]; discountValue=0; renderCart(); renderProducts(); updateStats(); playSale(); showToast('تم البيع ✓');
   closeCartDrawer();
 }
+
 function saveDraft(){ if(!cart.length) return; let drafts=DB.load('drafts',[]); drafts.push({id:Date.now(), items:cart, discount:discountValue}); DB.save('drafts',drafts); cart=[]; renderCart(); showToast('تم الحفظ'); }
 function saveAsOrder(){ saveDraft(); }
-function saveAsInvoice(){ if(!cart.length) return; const total=cart.reduce((s,i)=>s+i.price*i.qty,0)-discountValue; sales.push({id:'INV-'+Date.now(), date:new Date().toISOString(), customer:'زبون عادي', items:JSON.parse(JSON.stringify(cart)), subtotal:cart.reduce((s,i)=>s+i.price*i.qty,0), discount:discountValue, total, received:0, change:0, payment:'-', status:'pending'}); DB.save('sales',sales); cart=[]; renderCart(); updateStats(); showToast('فاتورة مبدئية'); }
+function saveAsInvoice(){ if(!cart.length) return; const total=cart.reduce((s,i)=>s+i.price*i.qty,0)-discountValue; sales.push({id:'INV-'+Date.now(), date:new Date().toISOString(), customer:'زبون عادي', items:JSON.parse(JSON.stringify(cart)), subtotal:cart.reduce((s,i)=>s+i.price*i.qty,0), discount:discountValue, total, received:0, change:0, payment:'-', status:'pending'}); DB.save('sales',sales); syncAllToSupabase(); cart=[]; renderCart(); updateStats(); showToast('فاتورة مبدئية'); }
 
+// ============================================================
 // ==================== MODALS ====================
+// ============================================================
+
 function openModal(id){ 
   if(id==='productModal'){ 
     document.getElementById('prodCategory').innerHTML=categories.map(c=>`<option>${c.name}</option>`).join(''); 
@@ -784,6 +1002,7 @@ function openModal(id){
   }
   document.getElementById(id).classList.add('active');
 }
+
 function closeModal(id){ 
   document.getElementById(id).classList.remove('active'); 
   if(id==='productModal'){ editingProductId=null; tempProductImage=''; } 
@@ -791,12 +1010,14 @@ function closeModal(id){
   if(id==='cameraModal'){ closeCameraModal(); }
 }
 
-// ==================== PRODUCT IMAGE - WITH CAMERA CAPTURE ====================
+// ============================================================
+// ==================== PRODUCT IMAGE ====================
+// ============================================================
+
 let cameraStream = null;
 let capturedImageData = null;
 
 function captureProductImage() {
-  // فتح نافذة الكاميرا
   document.getElementById('cameraModal').classList.add('active');
   startCamera();
 }
@@ -823,11 +1044,8 @@ function capturePhoto() {
   const ctx = canvas.getContext('2d');
   ctx.drawImage(video, 0, 0);
   
-  // تحويل الصورة إلى Base64
   const imageData = canvas.toDataURL('image/jpeg', 0.8);
   capturedImageData = imageData;
-  
-  // عرض الصورة في منطقة تحميل الصورة
   tempProductImage = imageData;
   document.getElementById('prodImagePreview').src = imageData;
   document.getElementById('prodImagePreview').style.display = 'block';
@@ -866,7 +1084,10 @@ function removeProductImage(){
   document.getElementById('prodImageInput').value=''; 
 }
 
-// ==================== SCANNED PRODUCT MODAL (مع تحديد الكمية) ====================
+// ============================================================
+// ==================== SCANNED PRODUCT ====================
+// ============================================================
+
 let scannedProductData = null;
 let scannedQty = 1;
 
@@ -882,7 +1103,6 @@ function showScannedProductModal(product) {
   document.getElementById('scannedQty').value = 1;
   document.getElementById('scannedQty').max = product.stock;
   
-  // عرض الصورة
   const imgContainer = document.getElementById('scannedProductImage');
   if (product.image) {
     imgContainer.innerHTML = `<img src="${product.image}" style="width:100%; height:100%; object-fit:cover;">`;
@@ -913,19 +1133,27 @@ function addScannedProductToCart() {
   scannedProductData = null;
 }
 
+// ============================================================
 // ==================== SAVE PRODUCT ====================
+// ============================================================
+
 function saveProduct(){
   const name=document.getElementById('prodName').value.trim(); 
   if(!name){ playError(); showToast('الاسم مطلوب','error'); return; }
   const data={name, icon:document.getElementById('prodIcon')?.value||'📦', category:document.getElementById('prodCategory').value, price:parseFloat(document.getElementById('prodPrice').value)||0, cost:parseFloat(document.getElementById('prodCost').value)||0, stock:parseInt(document.getElementById('prodStock').value)||0, code:document.getElementById('prodCode').value||'P'+Date.now(), expiry:document.getElementById('prodExpiry').value||'', image:tempProductImage||(editingProductId?products.find(x=>x.id===editingProductId)?.image||'':''), type:'regular'};
   if(editingProductId){ Object.assign(products.find(x=>x.id===editingProductId), data); } else { data.id=Date.now(); products.push(data); }
-  DB.save('products',products); closeModal('productModal'); renderInventory(); renderProducts(); renderFruits(); playClick(); showToast('تم الحفظ');
+  DB.save('products',products); 
+  syncAllToSupabase();
+  closeModal('productModal'); renderInventory(); renderProducts(); renderFruits(); playClick(); showToast('تم الحفظ');
 }
 
 function editProduct(id){ const p=products.find(x=>x.id===id); if(!p) return; editingProductId=id; document.getElementById('productModalTitle').innerText='تعديل منتج'; openModal('productModal'); setTimeout(()=>{ document.getElementById('prodName').value=p.name; document.getElementById('prodCategory').value=p.category; document.getElementById('prodPrice').value=p.price; document.getElementById('prodCost').value=p.cost; document.getElementById('prodStock').value=p.stock; document.getElementById('prodCode').value=p.code||''; document.getElementById('prodExpiry').value=p.expiry||''; tempProductImage=p.image||''; if(p.image){ document.getElementById('prodImagePreview').src=p.image; document.getElementById('prodImagePreview').style.display='block'; document.querySelector('#imgUploadArea .upload-text').style.display='none'; } else removeProductImage(); },100); }
-function deleteProduct(id){ if(!confirm('حذف؟')) return; products=products.filter(p=>p.id!==id); DB.save('products',products); renderInventory(); renderProducts(); }
+function deleteProduct(id){ if(!confirm('حذف؟')) return; products=products.filter(p=>p.id!==id); DB.save('products',products); syncAllToSupabase(); renderInventory(); renderProducts(); }
 
-// ==================== BARCODE SCANNER - IMPROVED ====================
+// ============================================================
+// ==================== BARCODE SCANNER ====================
+// ============================================================
+
 let scannerMode = 'cart';
 let scannerActive = false;
 let scannerPaused = false;
@@ -1027,8 +1255,6 @@ function startNativeScanner(container) {
                             lastScanCode = code;
                             addToScanHistory(code);
                             playBeep(1200, 0.1);
-                            
-                            // معالجة الباركود حسب الوضع
                             handleScannedCode(code);
                         }
                     }
@@ -1207,7 +1433,6 @@ function stopScanner() {
 function handleScannedCode(code) {
     const resultBox = document.getElementById('scannerResult');
     
-    // وضع إدخال الباركود في نموذج المنتج
     if (scannerMode === 'product') {
         document.getElementById('prodCode').value = code;
         resultBox.className = 'scanner-result-box found';
@@ -1219,7 +1444,6 @@ function handleScannedCode(code) {
     
     const p = products.find(x => x.code === code);
     
-    // وضع البحث في المخزون
     if (scannerMode === 'inventory-lookup') {
         if (p) {
             resultBox.className = 'scanner-result-box found';
@@ -1235,7 +1459,6 @@ function handleScannedCode(code) {
         return;
     }
     
-    // الوضع الأساسي: إضافة إلى السلة مع تحديد الكمية
     if (p) {
         if (p.stock <= 0) {
             playError();
@@ -1244,7 +1467,6 @@ function handleScannedCode(code) {
             return;
         }
         
-        // إغلاق الماسح وفتح نافذة تحديد الكمية
         closeScannerModal();
         showScannedProductModal(p);
         
@@ -1270,7 +1492,10 @@ function closeScannerModal() {
     closeModal('scannerModal');
 }
 
+// ============================================================
 // ==================== RENDERERS ====================
+// ============================================================
+
 function renderSales(){ const tbody=document.getElementById('salesTableBody'); if(!tbody) return; tbody.innerHTML=sales.slice().reverse().map(s=>`<tr><td>${s.id}</td><td>${new Date(s.date).toLocaleDateString()}</td><td>${s.customer}</td><td>${formatNumber(s.total.toFixed(2))} ${settings.currency}</td></tr>`).join('')||'<tr><td colspan="4">لا توجد فواتير</td></tr>'; }
 function renderCashier(){ const tbody=document.getElementById('cashierTableBody'); if(!tbody) return; tbody.innerHTML=cashMovements.slice().reverse().map(m=>`<tr><td>${new Date(m.date).toLocaleDateString()}</td><td>${m.type==='in'?'إيراد':'مصروف'}</td><td>${formatNumber(m.amount.toFixed(2))} ${settings.currency}</td></tr>`).join('')||'<tr><td colspan="3">لا توجد حركات</td></tr>'; }
 function renderInventory(){ const tbody=document.getElementById('inventoryTableBody'); if(!tbody) return; const list=products.filter(p=>!p.type||p.type==='regular'); tbody.innerHTML=list.map(p=>`<tr><td>${p.name}</td><td>${formatNumber(p.price.toFixed(2))}</td><td style="color:${p.stock<=0?'var(--red)':'var(--green)'}">${p.stock}</td><td><button class="table-btn edit" onclick="editProduct(${p.id})"><i class="fas fa-edit"></i></button> <button class="table-btn delete" onclick="deleteProduct(${p.id})"><i class="fas fa-trash"></i></button></td></tr>`).join('')||'<tr><td colspan="4">لا توجد منتجات</td></tr>'; }
@@ -1280,33 +1505,59 @@ function renderCustomers(){ const tbody=document.getElementById('customersTableB
 function renderDebts(){ const tbody=document.getElementById('debtsTableBody'); if(!tbody) return; tbody.innerHTML=debts.map(d=>`<tr><td>${d.name}</td><td>${formatNumber(d.amount.toFixed(2))} ${settings.currency}</td><td>${d.note||'-'}</td></tr>`).join('')||'<tr><td colspan="3">لا توجد ديون</td></tr>'; }
 function renderReports(){ const total=sales.reduce((a,s)=>a+s.total,0); document.getElementById('rTotalSales').innerText=formatNumber(total.toFixed(2))+' '+settings.currency; document.getElementById('rTotalOrders').innerText=sales.length; }
 function loadSettings(){ document.getElementById('setStoreName').value=settings.storeName; document.getElementById('setCurrency').value=settings.currency; }
-function saveSettings(){ settings.storeName=document.getElementById('setStoreName').value; settings.currency=document.getElementById('setCurrency').value; DB.save('settings',settings); showToast('تم الحفظ'); }
+function saveSettings(){ settings.storeName=document.getElementById('setStoreName').value; settings.currency=document.getElementById('setCurrency').value; DB.save('settings',settings); syncAllToSupabase(); showToast('تم الحفظ'); }
 
+// ============================================================
 // ==================== GENERIC MODALS ====================
-function openSupplierModal(){ document.getElementById('gmTitle').innerHTML='<i class="fas fa-truck"></i> إضافة مورد'; document.getElementById('gmBody').innerHTML='<div class="form-group"><label>الاسم</label><input type="text" id="sName"></div><div class="form-group"><label>الهاتف</label><input type="text" id="sPhone"></div><div class="form-group"><label>ماذا يبيع</label><input type="text" id="sProducts"></div><div class="form-group"><label>ملاحظة</label><input type="text" id="sNote"></div>'; document.getElementById('gmSaveBtn').onclick=()=>{ suppliers.push({id:Date.now(), name:document.getElementById('sName').value, phone:document.getElementById('sPhone').value, products:document.getElementById('sProducts').value, note:document.getElementById('sNote').value}); DB.save('suppliers',suppliers); closeModal('genericModal'); renderSuppliers(); }; document.getElementById('genericModal').classList.add('active'); }
-function openCustomerModal(){ document.getElementById('gmTitle').innerHTML='<i class="fas fa-user-plus"></i> إضافة زبون'; document.getElementById('gmBody').innerHTML='<div class="form-group"><label>الاسم</label><input type="text" id="cName"></div><div class="form-group"><label>الهاتف</label><input type="text" id="cPhone"></div>'; document.getElementById('gmSaveBtn').onclick=()=>{ customers.push({id:Date.now(), name:document.getElementById('cName').value, phone:document.getElementById('cPhone').value}); DB.save('customers',customers); closeModal('genericModal'); renderCustomers(); }; document.getElementById('genericModal').classList.add('active'); }
-function openDebtModal(){ document.getElementById('gmTitle').innerHTML='<i class="fas fa-hand-holding-usd"></i> إضافة دين'; document.getElementById('gmBody').innerHTML='<div class="form-group"><label>الاسم</label><input type="text" id="dName"></div><div class="form-group"><label>المبلغ</label><input type="number" id="dAmount"></div><div class="form-group"><label>ملاحظة</label><input type="text" id="dNote"></div>'; document.getElementById('gmSaveBtn').onclick=()=>{ debts.push({id:Date.now(), name:document.getElementById('dName').value, amount:parseFloat(document.getElementById('dAmount').value)||0, note:document.getElementById('dNote').value, date:new Date().toISOString()}); DB.save('debts',debts); closeModal('genericModal'); renderDebts(); }; document.getElementById('genericModal').classList.add('active'); }
+// ============================================================
 
+function openSupplierModal(){ document.getElementById('gmTitle').innerHTML='<i class="fas fa-truck"></i> إضافة مورد'; document.getElementById('gmBody').innerHTML='<div class="form-group"><label>الاسم</label><input type="text" id="sName"></div><div class="form-group"><label>الهاتف</label><input type="text" id="sPhone"></div><div class="form-group"><label>ماذا يبيع</label><input type="text" id="sProducts"></div><div class="form-group"><label>ملاحظة</label><input type="text" id="sNote"></div>'; document.getElementById('gmSaveBtn').onclick=()=>{ suppliers.push({id:Date.now(), name:document.getElementById('sName').value, phone:document.getElementById('sPhone').value, products:document.getElementById('sProducts').value, note:document.getElementById('sNote').value}); DB.save('suppliers',suppliers); syncAllToSupabase(); closeModal('genericModal'); renderSuppliers(); }; document.getElementById('genericModal').classList.add('active'); }
+function openCustomerModal(){ document.getElementById('gmTitle').innerHTML='<i class="fas fa-user-plus"></i> إضافة زبون'; document.getElementById('gmBody').innerHTML='<div class="form-group"><label>الاسم</label><input type="text" id="cName"></div><div class="form-group"><label>الهاتف</label><input type="text" id="cPhone"></div>'; document.getElementById('gmSaveBtn').onclick=()=>{ customers.push({id:Date.now(), name:document.getElementById('cName').value, phone:document.getElementById('cPhone').value}); DB.save('customers',customers); syncAllToSupabase(); closeModal('genericModal'); renderCustomers(); }; document.getElementById('genericModal').classList.add('active'); }
+function openDebtModal(){ document.getElementById('gmTitle').innerHTML='<i class="fas fa-hand-holding-usd"></i> إضافة دين'; document.getElementById('gmBody').innerHTML='<div class="form-group"><label>الاسم</label><input type="text" id="dName"></div><div class="form-group"><label>المبلغ</label><input type="number" id="dAmount"></div><div class="form-group"><label>ملاحظة</label><input type="text" id="dNote"></div>'; document.getElementById('gmSaveBtn').onclick=()=>{ debts.push({id:Date.now(), name:document.getElementById('dName').value, amount:parseFloat(document.getElementById('dAmount').value)||0, note:document.getElementById('dNote').value, date:new Date().toISOString()}); DB.save('debts',debts); syncAllToSupabase(); closeModal('genericModal'); renderDebts(); }; document.getElementById('genericModal').classList.add('active'); }
+
+// ============================================================
 // ==================== HELPERS ====================
+// ============================================================
+
 function showToast(msg,type){ const t=document.getElementById('toast'); t.innerHTML=`<i class="fas fa-${type==='error'?'exclamation-circle':'check-circle'}"></i> ${msg}`; t.className='toast show'+(type==='error'?' error':''); setTimeout(()=>t.classList.remove('show'),2000); }
 function updateStats(){ document.getElementById('todaySalesCount').innerText=sales.filter(s=>new Date(s.date).toDateString()===new Date().toDateString()).length; }
 function printLastReceipt(){ if(!sales.length) return; const inv=sales[sales.length-1]; document.getElementById('receiptContainer').innerHTML=`<div class="receipt"><h2>${settings.storeName}</h2><p>فاتورة: ${inv.id}<br>${new Date(inv.date).toLocaleString()}<br>${inv.customer}</p><table>${inv.items.map(i=>`<tr><td>${i.name}</td><td>${i.qty}</td><td>${formatNumber(i.price.toFixed(2))}</td><td>${formatNumber((i.price*i.qty).toFixed(2))}</td></tr>`).join('')}</table><h3>الإجمالي: ${formatNumber(inv.total.toFixed(2))} ${settings.currency}</h3></div>`; document.getElementById('receiptContainer').style.display='block'; window.print(); document.getElementById('receiptContainer').style.display='none'; }
-function cashMove(type){ const a=parseFloat(prompt('المبلغ:')); if(isNaN(a)||a<=0) return; cashMovements.push({date:new Date().toISOString(), type, amount:a, desc:prompt('الوصف:')||(type==='in'?'إيداع':'سحب')}); DB.save('cash',cashMovements); renderCashier(); }
+function cashMove(type){ const a=parseFloat(prompt('المبلغ:')); if(isNaN(a)||a<=0) return; cashMovements.push({date:new Date().toISOString(), type, amount:a, desc:prompt('الوصف:')||(type==='in'?'إيداع':'سحب')}); DB.save('cash',cashMovements); syncAllToSupabase(); renderCashier(); }
 function exportSales(){ const csv=[['رقم','التاريخ','الزبون','المبلغ'], ...sales.map(s=>[s.id,new Date(s.date).toLocaleDateString(),s.customer,s.total])].map(r=>r.join(',')).join('\n'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\ufeff'+csv])); a.download='sales.csv'; a.click(); }
 function resetData(){ if(!confirm('حذف كل البيانات؟')) return; localStorage.clear(); location.reload(); }
+
 document.getElementById('globalSearch').addEventListener('input', renderProducts);
 window.addEventListener('resize', ()=>{ renderCart(); });
 
+// ============================================================
 // ==================== INIT ====================
-function initApp(){ 
-  renderCategoryTabs(); renderProducts(); renderCart(); updateStats(); 
+// ============================================================
+
+async function initApp(){ 
+    // محاولة تحميل البيانات من Supabase
+    await loadAllFromSupabase();
+    
+    renderCategoryTabs(); 
+    renderProducts(); 
+    renderCart(); 
+    updateStats(); 
+    
+    // مزامنة تلقائية كل دقيقة
+    setInterval(() => {
+        syncAllToSupabase();
+    }, 60000);
 }
+
 function renderCategoryTabs(){
   const tabs = document.getElementById('categoryTabs');
   if(!tabs) return;
   tabs.innerHTML = ['الكل', ...categories.map(c=>c.name)].map(c=>`<div class="cat-tab ${c===currentCategory?'active':''}" onclick="filterByCategory('${c}')">${c}</div>`).join('');
 }
-if(getCurrentUser()){ document.getElementById('loginPage').style.display='none'; initApp(); }
+
+if(getCurrentUser()){ 
+    document.getElementById('loginPage').style.display='none'; 
+    initApp(); 
+}
 </script>
 </body>
 </html>
